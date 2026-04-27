@@ -5,6 +5,7 @@
 
 #include "sentry_mode.h"
 #include "ssd_mobilenet_v2_fpnlite_035_224_int8.h"
+#include "l2_model.h"
 
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
@@ -22,6 +23,14 @@ namespace {
     
     constexpr int kTensorArenaSize = 1024 * 1024;
     static uint8_t tensor_arena[kTensorArenaSize];
+
+    // L2 模型独立资源
+    const tflite::Model* l2_model = nullptr;
+    tflite::MicroInterpreter* l2_interpreter = nullptr;
+    TfLiteTensor* l2_input = nullptr;
+    TfLiteTensor* l2_output = nullptr;
+    constexpr int kL2ArenaSize = 256 * 1024;
+    static uint8_t l2_tensor_arena[kL2ArenaSize];
     
     static int s_current_mode = 0;
     static bool s_ai_initialized = false;
@@ -177,6 +186,44 @@ extern "C" bool ai_init(int mode)
         
         LOG_INFO("TFLM initialized successfully");
         LOG_INFO("Input shape: %dx%dx%d", input->dims->data[1], input->dims->data[2], input->dims->data[3]);
+    } else if (mode == MODE_LEVEL2) {
+        l2_model = tflite::GetModel(_home_jingo_work_l2_training_l2_model_quant_tflite);
+        if (l2_model->version() != TFLITE_SCHEMA_VERSION) {
+            LOG_ERROR("L2 Model schema version mismatch: %d != %d",
+                     l2_model->version(), TFLITE_SCHEMA_VERSION);
+            xSemaphoreGive(g_ai_mutex);
+            return false;
+        }
+
+        static tflite::MicroMutableOpResolver<6> l2_op_resolver;
+        l2_op_resolver.AddConv2D();
+        l2_op_resolver.AddDepthwiseConv2D();
+        l2_op_resolver.AddUnidirectionalSequenceLSTM();
+        l2_op_resolver.AddReshape();
+        l2_op_resolver.AddFullyConnected();
+        l2_op_resolver.AddSoftmax();
+
+        static tflite::MicroInterpreter l2_static_interpreter(
+            l2_model, l2_op_resolver, l2_tensor_arena, kL2ArenaSize);
+        l2_interpreter = &l2_static_interpreter;
+
+        if (l2_interpreter->AllocateTensors() != kTfLiteOk) {
+            LOG_ERROR("L2 AllocateTensors() failed");
+            xSemaphoreGive(g_ai_mutex);
+            return false;
+        }
+
+        l2_input = l2_interpreter->input(0);
+        l2_output = l2_interpreter->output(0);
+
+        if (l2_input == nullptr || l2_output == nullptr) {
+            LOG_ERROR("L2 input or output tensor is null");
+            xSemaphoreGive(g_ai_mutex);
+            return false;
+        }
+        LOG_INFO("L2 TFLM initialized, input: %dx%dx%dx%d",
+                 l2_input->dims->data[0], l2_input->dims->data[1],
+                 l2_input->dims->data[2], l2_input->dims->data[3]);
     }
     
     s_current_mode = mode;
@@ -197,12 +244,16 @@ extern "C" bool ai_switch_mode(int new_mode)
 extern "C" bool ai_run_inference(uint8_t *input_frame)
 {
     xSemaphoreTake(g_ai_mutex, portMAX_DELAY);
-    if (!s_ai_initialized || interpreter == nullptr) {
+    if (!s_ai_initialized) {
         xSemaphoreGive(g_ai_mutex);
         return false;
     }
     
     if (s_current_mode == MODE_LEVEL1) {
+        if (interpreter == nullptr) {
+            xSemaphoreGive(g_ai_mutex);
+            return false;
+        }
         if (input != nullptr && input_frame != nullptr) {
             memcpy(input->data.uint8, input_frame, 
                    LEVEL1_INPUT_WIDTH * LEVEL1_INPUT_HEIGHT * LEVEL1_INPUT_CHANNELS);
@@ -224,6 +275,36 @@ extern "C" bool ai_run_inference(uint8_t *input_frame)
             s_last_result = 0;
             s_last_confidence = 0.0f;
         }
+        
+        xSemaphoreGive(g_ai_mutex);
+        return true;
+    }
+    
+    if (s_current_mode == MODE_LEVEL2) {
+        if (l2_interpreter == nullptr || l2_input == nullptr || input_frame == nullptr) {
+            xSemaphoreGive(g_ai_mutex);
+            return false;
+        }
+        memcpy(l2_input->data.uint8, input_frame,
+               LEVEL2_HISTORY_FRAMES * LEVEL2_INPUT_WIDTH * LEVEL2_INPUT_HEIGHT * LEVEL2_INPUT_CHANNELS);
+        
+        if (l2_interpreter->Invoke() != kTfLiteOk) {
+            LOG_ERROR("L2 Invoke failed");
+            xSemaphoreGive(g_ai_mutex);
+            return false;
+        }
+        
+        float* out_data = l2_output->data.f;
+        float max_conf = out_data[0];
+        int max_idx = 0;
+        for (int i = 1; i < 5; i++) {
+            if (out_data[i] > max_conf) {
+                max_conf = out_data[i];
+                max_idx = i;
+            }
+        }
+        s_last_result = max_idx;
+        s_last_confidence = max_conf;
         
         xSemaphoreGive(g_ai_mutex);
         return true;
