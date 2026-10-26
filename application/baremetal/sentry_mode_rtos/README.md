@@ -1,15 +1,15 @@
-# N900 车载哨兵模式视觉监控系统
+# NA900 车载哨兵模式视觉监控系统
 
 ## 项目概述
 
-基于 Nuclei N900 RISC-V 处理器的车载停车监控系统（哨兵模式），实现：
+基于 Nuclei NA900 RISC-V 处理器的车载停车监控系统（哨兵模式），实现：
 - **Level 1**: 5秒/帧低功耗监控，检测人员靠近
 - **Level 2**: 5 FPS高帧率识别，检测危险动作（砸车、撬门、划车、攀爬）
 - **自动录制**: 检测到危险时自动录制30秒视频证据
 
 ## 硬件要求
 
-- **CPU**: N900FD（32 位 RISC-V，带 FPU 与 DSP 扩展）
+- **CPU**: NA900 core1（rv32imac / ilp32，带 DSP 扩展，无 F/D 浮点）
 - **内存**: 
   - ILM: 64KB（指令内存）
   - DLM: 64KB（数据内存，静态分配）
@@ -47,29 +47,31 @@ src/
 cd application/baremetal/sentry_mode_rtos
 
 # 编译
-make CORE=n600fd ARCH_EXT=_xxldsp all
+make CORE=core1_na900 ARCH_EXT=_xxldsp all
 
 # 烧录
-make CORE=n600fd upload
+make CORE=core1_na900 upload
 
 # 调试
-make CORE=n600fd debug
+make CORE=core1_na900 debug
 ```
 
 ## 模型部署
 
 ### 模型格式
 
-- **Level 1模型**: 人形检测（~100KB，int8量化）
-- **Level 2模型**: 危险动作识别（~300KB，int8量化）
+- **Level 1模型**: 人形检测（~1.5MB，int8量化）
+- **Level 2模型**: 危险动作识别（~101KB，动态量化）
 
-### Flash布局
+### 镜像分区（建议）
 
-```
-0x20000000 - 0x2001FFFF: 应用程序代码
-0x20020000 - 0x2003FFFF: Level 1模型
-0x20040000 - 0x2007FFFF: Level 2模型
-```
+| 区域 | 建议大小 | 说明 |
+|------|---------|------|
+| 应用程序代码 | ~128KB | FreeRTOS + TFLM 运行时 |
+| Level 1 模型 | ~1.5MB | SSD MobileNet v2，常驻 |
+| Level 2 模型 | ~101KB | CNN+LSTM，按需加载 |
+
+> 具体烧录地址以实际 Flash 分区方案为准。当前构建使用 `gcc_evalsoc_ddr.ld`，固件镜像位于 DDR ROM 区（`0xA0000000`）。
 
 ### 模型转换
 
@@ -160,7 +162,7 @@ with open('model.h', 'w') as f:
 
 ## 性能指标
 
-- Level 1推理: ~100ms (n600fd + DSP)
+- Level 1推理: ~100ms (NA900 core1 + DSP)
 - Level 2推理: ~200ms (DDR模型)
 - 系统功耗: 5mW(Level1) / 100mW(Level2)
 - 响应延迟: <1秒 (检测到人→启动Level 2)

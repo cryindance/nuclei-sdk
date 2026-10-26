@@ -389,7 +389,7 @@ make html  # 构建 HTML 文档
 
 | 主题 | 入口文档 | 内容 |
 |------|---------|------|
-| 详细设计 | [doc/design/哨兵模式详细设计文档.md](application/baremetal/sentry_mode_rtos/doc/design/哨兵模式详细设计文档.md) | 主设计文档 v4.0（N900）：状态机、AI 架构、内存布局 |
+| 详细设计 | [doc/design/哨兵模式详细设计文档.md](application/baremetal/sentry_mode_rtos/doc/design/哨兵模式详细设计文档.md) | 主设计文档 v4.0（NA900 core1 / rv32imac）：状态机、AI 架构、内存布局 |
 | 状态机参考 | [doc/design/哨兵模式状态机参考.md](application/baremetal/sentry_mode_rtos/doc/design/哨兵模式状态机参考.md) | 状态/事件/迁移速查 |
 | AI 集成 | [doc/ai/哨兵功能神经网络模型集成记录.md](application/baremetal/sentry_mode_rtos/doc/ai/哨兵功能神经网络模型集成记录.md) | TFLM + SSD MobileNet v2 集成与问题记录 |
 | 修改记录 | [doc/history/哨兵模式修改记录.md](application/baremetal/sentry_mode_rtos/doc/history/哨兵模式修改记录.md) | 需求/设计/代码变更历史 |

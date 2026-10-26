@@ -10,7 +10,7 @@
 
 ```bash
 cd application/baremetal/sentry_mode_rtos
-make CORE=n600fd ARCH_EXT=_xxldsp all
+make CORE=core1_na900 ARCH_EXT=_xxldsp all
 ```
 
 ### LSP错误原因
@@ -96,7 +96,7 @@ make CORE=n600fd ARCH_EXT=_xxldsp all
 ```bash
 cd /home/jingo/work/nuclei-sdk/application/baremetal/sentry_mode_rtos
 make clean
-make CORE=n600fd ARCH_EXT=_xxldsp all 2>&1 | head -50
+make CORE=core1_na900 ARCH_EXT=_xxldsp all 2>&1 | head -50
 ```
 
 如果没有编译错误，说明代码是正确的，LSP告警只是路径配置问题。
