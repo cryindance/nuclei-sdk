@@ -170,6 +170,7 @@ Apache-2.0
 
 ## 参考文档
 
-- `DETAILED_DESIGN.md`: 详细设计文档
+- [`doc/design/哨兵模式详细设计文档.md`](doc/design/哨兵模式详细设计文档.md): 详细设计文档
+- [`doc/README.md`](doc/README.md): 项目文档索引
 - Nuclei SDK文档: https://doc.nucleisys.com/nuclei_sdk
 - NMSIS-NN文档: https://doc.nucleisys.com/nmsis/nn
