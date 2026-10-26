@@ -41,13 +41,15 @@
 |------|------|
 | `design/SENTRY_MODE_DESIGN_images/` | ✅ 三级状态机图（`.dot` + `.svg`） |
 | `design/DETAILED_DESIGN_images/tflm_freertos_arch.*` | ✅ TFLM 软件栈图（从 nuclei-linux-sdk 文档中迁回） |
-| `design/DETAILED_DESIGN_images/detailed_memory_layout.svg` | ⚠️ **缺失**（设计文档第 8 章引用，原文件已丢失，待补） |
+| `design/DETAILED_DESIGN_images/detailed_memory_layout.*` | ✅ 已重新生成（`.dot` 源文件同目录，依据 §3.3 与实际链接脚本） |
 | `ai/哨兵功能神经网络模型集成记录_images/` | ✅ L1 网络架构图（`.dot` + `.svg`） |
+
+> **构建说明**：当前 `Makefile` 使用 `gcc_evalsoc_ddr.ld`（用 DDR 模拟 ROM/RAM），ILM/DLM 未启用；内存布局图按实际构建绘制。设计文档 §6.4 对链接脚本的描述与实现存在差异，待核对。
 
 ## 四、版本提示
 
-- 设计文档已更新到 **v4.0（N900 平台，2026-04-25）**
-- 代码目录的 `README.md` 仍是 **N600 版本**，平台信息未同步，阅读时以设计文档为准，后续需统一
+- 设计文档 **v4.0（N900 平台，2026-04-25）**
+- 代码目录 `README.md` 已同步为 **N900** 平台描述
 
 ## 五、文档维护约定
 
